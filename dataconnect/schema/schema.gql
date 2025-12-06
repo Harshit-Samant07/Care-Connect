@@ -1,0 +1,49 @@
+type User @table {
+  displayName: String!
+  createdAt: Timestamp!
+  userType: String!
+  email: String
+  photoUrl: String
+  address: String
+  phoneNumber: String
+}
+
+type Medication @table {
+  name: String!
+  dosage: String!
+  quantity: Int!
+  expirationDate: Date!
+  createdAt: Timestamp!
+  description: String
+  prescriptionRequired: Boolean
+  storageInstructions: String
+  category: String
+}
+
+type DonationListing @table {
+  donor: User!
+  medication: Medication!
+  status: String!
+  createdAt: Timestamp!
+  preferredPickupLocation: String
+  notes: String
+}
+
+type Request @table {
+  recipient: User!
+  medication: Medication!
+  status: String!
+  createdAt: Timestamp!
+  messageToDonor: String
+}
+
+type Exchange @table {
+  donationListing: DonationListing!
+  request: Request!
+  exchangeDate: Date!
+  status: String!
+  createdAt: Timestamp!
+  donorRating: Int
+  recipientRating: Int
+  notes: String
+}

@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function authed() { return request.auth != null; }
+    function isAdmin() { return request.auth.uid == "pAnsBC5scjfxZvUHFDpBmyfhopj2"; }
+
+    match /users/{uid} {
+      allow read: if authed();
+      allow write: if authed() && uid == request.auth.uid;
+      allow update: if isAdmin(); // admin can approve NGO role
+    }
+
+    match /medicines/{id} {
+      allow read: if true;
+      allow create: if authed() && request.resource.data.ownerId == request.auth.uid;
+      // Owner can always update/delete their own medicine
+      // Additionally allow a one-time reservation transition by another authenticated user:
+      // status: available -> reserved, setting reservedBy to their UID.
+      allow update, delete: if authed() && (
+        resource.data.ownerId == request.auth.uid || (
+          // reservation by non-owner
+          resource.data.status == 'available' &&
+          request.resource.data.status == 'reserved' &&
+          request.resource.data.reservedBy == request.auth.uid &&
+          // ensure ownerId unchanged
+          request.resource.data.ownerId == resource.data.ownerId &&
+          // prevent malicious changes to critical fields
+          request.resource.data.mrp == resource.data.mrp &&
+          request.resource.data.priceForSeeker == resource.data.priceForSeeker &&
+          request.resource.data.quantity == resource.data.quantity &&
+          request.resource.data.name == resource.data.name &&
+          request.resource.data.use == resource.data.use &&
+          request.resource.data.condition == resource.data.condition &&
+          request.resource.data.geohash == resource.data.geohash &&
+          request.resource.data.location == resource.data.location &&
+          request.resource.data.expiry == resource.data.expiry &&
+          request.resource.data.photoUrl == resource.data.photoUrl &&
+          request.resource.data.ownerEmail == resource.data.ownerEmail &&
+          request.resource.data.createdAt == resource.data.createdAt
+        ) || (
+          // cancellation by the taker (revert reserved -> available)
+          resource.data.status == 'reserved' &&
+          resource.data.reservedBy == request.auth.uid &&
+          request.resource.data.status == 'available' &&
+          request.resource.data.reservedBy == null &&
+          request.resource.data.ownerId == resource.data.ownerId &&
+          request.resource.data.mrp == resource.data.mrp &&
+          request.resource.data.priceForSeeker == resource.data.priceForSeeker &&
+          request.resource.data.quantity == resource.data.quantity &&
+          request.resource.data.name == resource.data.name &&
+          request.resource.data.use == resource.data.use &&
+          request.resource.data.condition == resource.data.condition &&
+          request.resource.data.geohash == resource.data.geohash &&
+          request.resource.data.location == resource.data.location &&
+          request.resource.data.expiry == resource.data.expiry &&
+          request.resource.data.photoUrl == resource.data.photoUrl &&
+          request.resource.data.ownerEmail == resource.data.ownerEmail &&
+          request.resource.data.createdAt == resource.data.createdAt
+        )
+      );
+    }
+
+    match /reservations/{id} {
+      allow create: if authed();
+      allow read: if authed() &&
+          (resource.data.donorId == request.auth.uid ||
+           resource.data.takerId == request.auth.uid ||
+           isAdmin());
+      allow update, delete: if false; // handled by maintenance
+    }
+  }
+}
